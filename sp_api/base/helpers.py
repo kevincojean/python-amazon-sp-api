@@ -1,10 +1,12 @@
 from io import BytesIO
+from math import ceil
 
 from Crypto.Util.Padding import pad
 import hashlib
 
 import base64
 from Crypto.Cipher import AES
+from ratelimit import limits, RateLimitDecorator
 
 
 def fill_query_params(query, *args):
@@ -22,6 +24,37 @@ def sp_endpoint(path, method='GET'):
         wrapper.__doc__ = function.__doc__
         return wrapper
     return decorator
+
+
+class SPAPIRateLimitDecorator(RateLimitDecorator):
+    """
+    Rate limit decorator class for the documented SP-API rate limits.
+    """
+
+    def __init__(self, rate: float, raise_on_limit=False):
+        """
+        Instantiates a RateLimitDecorator decorator. Converts and enforces
+        the specified rate limits (per second) to the SP-API.
+
+        Rate limits are documented by Amazon here:
+        https://github.com/amzn/selling-partner-api-docs/tree/main/references
+
+        :param float rate: Maximum calls per second as documented by the Amazon documentation. Must be a number greater than 0.
+        :param bool raise_on_limit: A boolean allowing the caller to avoiding raising an exception.
+        """
+        # minimum period required for 2 calls
+        period: float = 1 / rate  # in seconds, eg: 120.48
+
+        calls: int = 1 + 1
+
+        super().__init__(calls=calls, period=period, raise_on_limit=raise_on_limit)
+
+
+rate_limiter = SPAPIRateLimitDecorator  # @rate_limiter
+
+
+def limiter(rate_per_seconds: float):
+    limits()
 
 
 def encrypt_aes(file_or_bytes_io, key, iv):

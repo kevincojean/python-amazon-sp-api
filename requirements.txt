@@ -7,5 +7,4 @@ setuptools~=51.0.0
 pycryptodome
 pytz~=2020.5
 confuse~=1.4.0
-
-
+ratelimit~=2.2.1
